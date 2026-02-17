@@ -1,0 +1,365 @@
+import { useState } from "react";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from "recharts";
+
+const COLORS = {
+  primary: "#1B4F72",
+  secondary: "#2E86C1",
+  accent: "#E74C3C",
+  success: "#27AE60",
+  warning: "#F39C12",
+  light: "#EBF5FB",
+  bg: "#F8F9FA",
+  text: "#2C3E50",
+  white: "#FFFFFF",
+};
+
+const SEGMENT_COLORS = ["#27AE60", "#2E86C1", "#F39C12", "#E74C3C"];
+const AI_COLORS = ["#1B4F72", "#2E86C1", "#F39C12", "#E74C3C"];
+const SECURITY_COLORS = ["#27AE60", "#F39C12", "#E74C3C"];
+
+const SAMPLE_DATA = {
+  orgName: "JUSDA Europe",
+  date: "11.02.2026",
+  respondents: { total: 85, employees: 85, rate: "100" },
+  
+  baselineMetrics: [
+    { name: "AI adopce", value: 77.6, target: 30, benchmark: 25, unit: "%", status: "ok" },
+    { name: "Bezpečnostní skóre", value: 53.6, target: 70, benchmark: 40, unit: "%", status: "warning" },
+    { name: "Pool ambasadorů", value: 47.1, target: 15, benchmark: 15, unit: "%", status: "ok" },
+    { name: "Produktivitní dluh", value: 80.0, target: 30, benchmark: 50, unit: "%", status: "critical", inverse: true },
+    { name: "Spokojenost s nástroji", value: 3.52, target: 3.5, benchmark: 3.0, unit: "/5", status: "ok" },
+    { name: "Ochota ke změně", value: 78.8, target: 60, benchmark: 40, unit: "%", status: "ok" },
+    { name: "Komunikační efektivita", value: 47.1, target: 50, benchmark: 35, unit: "%", status: "warning" },
+  ],
+
+  changeSegments: [
+    { name: "Průkopníci", value: 24, desc: "Aktivně vyhledávají změny" },
+    { name: "Následovníci", value: 42, desc: "Přizpůsobí se bez problémů" },
+    { name: "Opatrní", value: 33, desc: "Potřebují čas a pomoc" },
+    { name: "Resistentní", value: 1, desc: "Změny je stresují" },
+  ],
+
+  aiSegments: [
+    { name: "AI Průkopníci", value: 60, desc: "Používají týdně+" },
+    { name: "AI Curious", value: 27, desc: "Občas / zajímá je to" },
+    { name: "AI Skeptici", value: 9, desc: "Zkoušeli, nepoužívají" },
+    { name: "AI Odmítači", value: 4, desc: "Nemají zájem" },
+  ],
+
+  securitySegments: [
+    { name: "Nízké riziko", value: 25 },
+    { name: "Střední riziko", value: 48 },
+    { name: "Vysoké riziko", value: 27 },
+  ],
+
+  topProblems: [
+    { problem: "Přepisování dat (denně+týdně)", pct: 80, category: "Procesy" },
+    { problem: "Nemožnost najít soubory", pct: 62, category: "Data" },
+    { problem: "AI funkce nevyužity", pct: 59, category: "AI" },
+    { problem: "Pomalé/nefunkční systémy", pct: 53, category: "Nástroje" },
+    { problem: "Chybí pravidla komunikace", pct: 53, category: "Komunikace" },
+    { problem: "Složité systémy", pct: 42, category: "Nástroje" },
+    { problem: "Opakované zadávání údajů", pct: 40, category: "Procesy" },
+    { problem: "Přepínání mezi aplikacemi", pct: 39, category: "Produktivita" },
+    { problem: "Lokální ukládání souborů", pct: 37, category: "Data" },
+    { problem: "Nedostatek školení", pct: 24, category: "Vzdělávání" },
+  ],
+
+  recommendations: [
+    { id: "C1.1", name: "Struktura SharePoint / rozcestník", priority: "KRITICKÁ", horizon: "Okamžitě", impact: "Produktivita" },
+    { id: "C6.3", name: "Nasazení firemního správce hesel", priority: "KRITICKÁ", horizon: "Okamžitě", impact: "Bezpečnost" },
+    { id: "C6.1", name: "Bezpečnostní školení (2FA + phishing)", priority: "KRITICKÁ", horizon: "Okamžitě", impact: "Bezpečnost" },
+    { id: "C1.2", name: "Pravidla pro ukládání souborů", priority: "VYSOKÁ", horizon: "Okamžitě", impact: "Data" },
+    { id: "C4.1", name: "Komunikační pravidla a kanály", priority: "VYSOKÁ", horizon: "Q1", impact: "Spolupráce" },
+    { id: "C5.1", name: "Školení MS365 – pokročilé", priority: "VYSOKÁ", horizon: "Q1", impact: "Kompetence" },
+    { id: "C5.2", name: "AI školení s praktickými ukázkami", priority: "VYSOKÁ", horizon: "Q1", impact: "AI adopce" },
+    { id: "C5.3", name: "Školení Copilot / integrované AI", priority: "VYSOKÁ", horizon: "Q1", impact: "AI adopce" },
+    { id: "C7.2", name: "Formalizace ambasadorské sítě", priority: "STŘEDNÍ", horizon: "Q1", impact: "Change mgmt" },
+    { id: "C3.2", name: "Automatizace datových toků", priority: "KRITICKÁ", horizon: "Q2", impact: "Produktivita" },
+    { id: "C2.2", name: "Konsolidace a zrychlení systémů", priority: "VYSOKÁ", horizon: "Q2", impact: "Efektivita" },
+    { id: "C4.2", name: "Efektivnější porady + AI zápisy", priority: "STŘEDNÍ", horizon: "Q2", impact: "Spolupráce" },
+    { id: "C6.2", name: "AI & data governance", priority: "STŘEDNÍ", horizon: "Q2", impact: "Bezpečnost" },
+  ],
+
+  educationPrefs: [
+    { name: "Krátká videa", value: 57 },
+    { name: "Učení od kolegů", value: 48 },
+    { name: "Osobní workshop", value: 39 },
+    { name: "Online workshop", value: 29 },
+    { name: "Konzultace/koučink", value: 22 },
+    { name: "Písemné postupy", value: 20 },
+  ],
+
+  radarData: [
+    { area: "AI adopce", score: 78, benchmark: 25 },
+    { area: "Bezpečnost", score: 54, benchmark: 40 },
+    { area: "Produktivita", score: 20, benchmark: 50 },
+    { area: "Komunikace", score: 47, benchmark: 35 },
+    { area: "Nástroje", score: 53, benchmark: 50 },
+    { area: "Ochota ke změně", score: 79, benchmark: 40 },
+    { area: "Vzdělávání", score: 66, benchmark: 30 },
+  ],
+};
+
+function MetricCard({ metric }) {
+  const statusColors = { ok: COLORS.success, warning: COLORS.warning, critical: COLORS.accent };
+  const statusLabels = { ok: "✓ V pořádku", warning: "⚠ Pozor", critical: "✕ Kritické" };
+  const color = statusColors[metric.status] || COLORS.secondary;
+
+  return (
+    <div style={{ background: COLORS.white, borderRadius: 12, padding: "16px 20px", borderLeft: `4px solid ${color}`, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+      <div style={{ fontSize: 13, color: "#7F8C8D", marginBottom: 4 }}>{metric.name}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+        <span style={{ fontSize: 28, fontWeight: 700, color }}>{metric.value}</span>
+        <span style={{ fontSize: 14, color: "#95A5A6" }}>{metric.unit}</span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+        <span style={{ fontSize: 11, color: "#95A5A6" }}>Cíl: {metric.inverse ? "< " : "> "}{metric.target}{metric.unit}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color }}>{statusLabels[metric.status]}</span>
+      </div>
+    </div>
+  );
+}
+
+function PieSection({ data, colors, title }) {
+  return (
+    <div style={{ background: COLORS.white, borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+      <h3 style={{ fontSize: 15, fontWeight: 600, color: COLORS.primary, margin: "0 0 16px 0" }}>{title}</h3>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ width: 140, height: 140, flexShrink: 0 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={2}>
+                {data.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
+              </Pie>
+              <Tooltip formatter={(v) => `${v} %`} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={{ flex: 1 }}>
+          {data.map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: colors[i % colors.length], flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: COLORS.text }}>{item.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: colors[i % colors.length], marginLeft: "auto" }}>{item.value} %</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PriorityBadge({ priority }) {
+  const map = {
+    "KRITICKÁ": { bg: "#FDEDEC", color: COLORS.accent },
+    "VYSOKÁ": { bg: "#FEF9E7", color: COLORS.warning },
+    "STŘEDNÍ": { bg: COLORS.light, color: COLORS.secondary },
+    "NÍZKÁ": { bg: "#EAFAF1", color: COLORS.success },
+  };
+  const s = map[priority] || map["STŘEDNÍ"];
+  return (
+    <span style={{ background: s.bg, color: s.color, padding: "2px 10px", borderRadius: 12, fontSize: 11, fontWeight: 700 }}>
+      {priority}
+    </span>
+  );
+}
+
+export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState("overview");
+  const data = SAMPLE_DATA;
+
+  const tabs = [
+    { id: "overview", label: "Přehled" },
+    { id: "segments", label: "Segmentace" },
+    { id: "problems", label: "Problémy" },
+    { id: "recommendations", label: "Doporučení" },
+    { id: "education", label: "Vzdělávání" },
+  ];
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg, fontFamily: "'Segoe UI', Arial, sans-serif" }}>
+      <div style={{ background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.secondary})`, color: COLORS.white, padding: "24px 32px" }}>
+        <div style={{ fontSize: 12, opacity: 0.8, textTransform: "uppercase", letterSpacing: 1 }}>Digitální audit</div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, margin: "4px 0" }}>{data.orgName}</h1>
+        <div style={{ display: "flex", gap: 24, fontSize: 13, opacity: 0.9, marginTop: 8 }}>
+          <span>Datum: {data.date}</span>
+          <span>Respondentů: {data.respondents.total} z {data.respondents.employees} ({data.respondents.rate} %)</span>
+          <span>Období sběru: 19.1. – 11.2.2026</span>
+        </div>
+      </div>
+
+      <div style={{ background: COLORS.white, borderBottom: "1px solid #E5E8EB", display: "flex", gap: 0, padding: "0 32px" }}>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            style={{
+              padding: "12px 20px",
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: activeTab === t.id ? 700 : 400,
+              color: activeTab === t.id ? COLORS.primary : "#7F8C8D",
+              borderBottom: activeTab === t.id ? `3px solid ${COLORS.secondary}` : "3px solid transparent",
+              transition: "all 0.2s",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: "24px 32px", maxWidth: 1200 }}>
+        {activeTab === "overview" && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.primary, margin: "0 0 16px 0" }}>Baseline metriky</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 32 }}>
+              {data.baselineMetrics.map((m, i) => <MetricCard key={i} metric={m} />)}
+            </div>
+
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.primary, margin: "0 0 16px 0" }}>Radarový profil organizace</h2>
+            <div style={{ background: COLORS.white, borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <ResponsiveContainer width="100%" height={350}>
+                <RadarChart data={data.radarData}>
+                  <PolarGrid stroke="#E5E8EB" />
+                  <PolarAngleAxis dataKey="area" tick={{ fontSize: 12, fill: COLORS.text }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                  <Radar name="JUSDA" dataKey="score" stroke={COLORS.secondary} fill={COLORS.secondary} fillOpacity={0.3} strokeWidth={2} />
+                  <Radar name="Benchmark" dataKey="benchmark" stroke="#95A5A6" fill="#95A5A6" fillOpacity={0.1} strokeWidth={1} strokeDasharray="5 5" />
+                  <Legend />
+                  <Tooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "segments" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <PieSection data={data.changeSegments} colors={SEGMENT_COLORS} title="Postoj ke změnám" />
+            <PieSection data={data.aiSegments} colors={AI_COLORS} title="AI adopce" />
+            <div style={{ gridColumn: "1 / -1" }}>
+              <PieSection data={data.securitySegments} colors={SECURITY_COLORS} title="Bezpečnostní riziko" />
+            </div>
+          </div>
+        )}
+
+        {activeTab === "problems" && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.primary, margin: "0 0 16px 0" }}>Top identifikované problémy</h2>
+            <div style={{ background: COLORS.white, borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <ResponsiveContainer width="100%" height={Math.max(300, data.topProblems.length * 44)}>
+                <BarChart data={[...data.topProblems].sort((a, b) => b.pct - a.pct)} layout="vertical" margin={{ left: 200, right: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E8EB" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} unit=" %" />
+                  <YAxis dataKey="problem" type="category" tick={{ fontSize: 12, fill: COLORS.text }} width={190} />
+                  <Tooltip formatter={(v) => `${v} %`} />
+                  <Bar dataKey="pct" radius={[0, 4, 4, 0]}>
+                    {[...data.topProblems].sort((a, b) => b.pct - a.pct).map((item, i) => (
+                      <Cell key={i} fill={item.pct >= 60 ? COLORS.accent : item.pct >= 40 ? COLORS.warning : COLORS.secondary} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 12, justifyContent: "center" }}>
+              {[{ label: "Kritické (60%+)", color: COLORS.accent }, { label: "Významné (40-59%)", color: COLORS.warning }, { label: "Sledovat (<40%)", color: COLORS.secondary }].map((l, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#7F8C8D" }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 2, background: l.color }} />
+                  {l.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "recommendations" && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.primary, margin: "0 0 16px 0" }}>Prioritizovaná doporučení</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {data.recommendations.map((r, i) => (
+                <div key={i} style={{
+                  background: COLORS.white,
+                  borderRadius: 8,
+                  padding: "14px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                  borderLeft: `3px solid ${r.priority === "KRITICKÁ" ? COLORS.accent : r.priority === "VYSOKÁ" ? COLORS.warning : COLORS.secondary}`,
+                }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.primary, minWidth: 50 }}>{r.id}</span>
+                  <span style={{ flex: 1, fontSize: 14, color: COLORS.text }}>{r.name}</span>
+                  <PriorityBadge priority={r.priority} />
+                  <span style={{ fontSize: 12, color: "#7F8C8D", minWidth: 70, textAlign: "right" }}>{r.horizon}</span>
+                  <span style={{ fontSize: 12, color: COLORS.secondary, minWidth: 90, textAlign: "right" }}>{r.impact}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "education" && (
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.primary, margin: "0 0 16px 0" }}>Preferované formy vzdělávání</h2>
+            <div style={{ background: COLORS.white, borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={data.educationPrefs} margin={{ left: 20, right: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E8EB" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: COLORS.text }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} unit=" %" />
+                  <Tooltip formatter={(v) => `${v} %`} />
+                  <Bar dataKey="value" fill={COLORS.secondary} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: COLORS.primary, margin: "24px 0 16px 0" }}>Vzdělávací matice</h2>
+            <div style={{ background: COLORS.white, borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: COLORS.primary }}>
+                    {["Oblast", "Priorita", "Cílová skupina", "Forma", "Rozsah"].map((h, i) => (
+                      <th key={i} style={{ padding: "10px 14px", color: COLORS.white, fontWeight: 600, textAlign: "left" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["Bezpečnost (hesla, 2FA, phishing)", "POVINNÉ", "Všichni (100 %)", "E-learning + test", "2 hodiny"],
+                    ["MS365 – základy (Teams, SP, OD)", "Vysoká", "Všichni uživatelé", "Workshop", "4 hodiny"],
+                    ["MS365 – pokročilé (Planner, PA)", "Vysoká", "Ambasadoři, vedoucí", "Workshop + mentoring", "8 hodin"],
+                    ["AI nástroje (ChatGPT, Copilot)", "Vysoká", "Všichni zájemci (66 %)", "Workshop + praxe", "4 hodiny"],
+                    ["Data & Excel pokročilé", "Střední", "Analytici, reportéři", "Workshop", "4 hodiny"],
+                    ["Komunikační pravidla", "Střední", "Všichni", "Onepager + kick-off", "1 hodina"],
+                    ["Automatizace (Power Automate)", "Dle potřeby", "Ambasadoři, IT", "Workshop + projekt", "8 hodin"],
+                  ].map((row, i) => (
+                    <tr key={i} style={{ background: i % 2 === 0 ? COLORS.white : COLORS.bg }}>
+                      {row.map((cell, j) => (
+                        <td key={j} style={{
+                          padding: "10px 14px",
+                          color: j === 1 && cell === "POVINNÉ" ? COLORS.accent : COLORS.text,
+                          fontWeight: j === 0 || (j === 1 && cell === "POVINNÉ") ? 600 : 400,
+                          borderBottom: "1px solid #E5E8EB",
+                        }}>
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: "16px 32px", borderTop: "1px solid #E5E8EB", fontSize: 11, color: "#95A5A6", display: "flex", justifyContent: "space-between" }}>
+        <span>Digitální audit – {data.orgName} | Zpracovala: Mgr. Kateřina Švidrnochová</span>
+        <span>Důvěrné – pouze pro interní použití</span>
+      </div>
+    </div>
+  );
+}
